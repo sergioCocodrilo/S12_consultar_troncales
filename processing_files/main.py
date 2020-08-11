@@ -33,7 +33,7 @@ def s12_listen(ser):
     """
     output_ended = False
     s12_state = None
-    slix_alarms = []
+    comment = ""
     while not output_ended:
         for line in ser.readlines():
             print(line[:-1].decode("ascii"))
@@ -43,9 +43,9 @@ def s12_listen(ser):
             elif b"<" in line:
                 output_ended = True 
                 s12_state = 1
-            elif b"SLIX" in line:
-                slix_alarms.append(line[14:30])
-    return (s12_state, slix_alarms)
+            elif b"COMMENT" in line:
+                comment = line[16:-2].decode("ascii")
+    return (s12_state, comment)
 
 if __name__ == "__main__":
     ser = connect()
@@ -54,13 +54,14 @@ if __name__ == "__main__":
         quit()
 
     # Get the list files. They should be in the data/input directory
+    files = listdir('data/input/')
     print('Selecciona tu archivo')
-    [print('\t', index + 1, ':', f) for index, f in enumerate(listdir('data/input/'))]
-    f = input('\t Archivo')
+    [print('\t', index + 1, ':', f) for index, f in enumerate(files)]
+    f = files[int(input('\t Archivo: ')) - 1]
 
     # Get the list of modules to check
     modules_to_check = []
-    with open(f, 'r') as in_file:
+    with open('data/input/' + f, 'r') as in_file:
         for l in in_file:
             if l.startswith("H'"):
                 modules_to_check.append(l[2:6])
@@ -69,8 +70,22 @@ if __name__ == "__main__":
     print('\t========== Revisando las troncales ==========')
     ser.write('\x1b'.encode("ascii"))
 
+    while s12_listen(ser)[0] == 0:
+        ser.write('MM\r\n'.encode('ascii'))
+
+    module_state = []
     for module in modules_to_check:
-        while s12_listen(ser)[0] == 0:
-            ser.write('MM\r\n'.encode('ascii'))
-        ser.write(("DISPLAY-TRUNK:NA1=H'" + module + ',TSLIST1=1&&5.').encode('ascii'))
+        ser.write(("DISPLAY-TRUNK:NA1=H'" + module + ',TSLIST1=1.\r\n').encode('ascii'))
+        while True:
+            state, comment = s12_listen(ser)
+            if comment != "":
+                module_state.append((module, comment))
+            if state == 1:
+                break
+            else:
+                ser.write('MM\r\n'.encode('ascii'))
+
+    print('\t========== Resumen ==========')
+    for pair in module_state:
+        print(pair)
 
