@@ -4,6 +4,7 @@
 from os import listdir 
 import serial
 import re
+import pandas as pd
 
 def connect():
     """Connects to serial through USB"""
@@ -55,9 +56,12 @@ if __name__ == "__main__":
 
     # Get the list files. They should be in the data/input directory
     files = listdir('data/input/')
-    print('Selecciona tu archivo')
-    [print('\t', index + 1, ':', f) for index, f in enumerate(files)]
-    f = files[int(input('\t Archivo: ')) - 1]
+    print('Selecciona tu archivo, debe estar en la carpeta data/input/ y ser del tipo .csv')
+    csv_files = list(filter(lambda f: f.endswith(".csv"), files))
+    [print('\t', index + 1, ':', f) for index, f in enumerate(csv_files)]
+    f = csv_files[int(input('\t Archivo: ')) - 1]
+    print('Archivo seleccionado:', f)
+
 
     # Get the list of modules to check
     modules_to_check = []
