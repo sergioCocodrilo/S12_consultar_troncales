@@ -62,34 +62,27 @@ if __name__ == "__main__":
     f = csv_files[int(input('\t Archivo: ')) - 1]
     print('Archivo seleccionado:', f)
 
-
-    # Get the list of modules to check
-    modules_to_check = []
-    with open('data/input/' + f, 'r') as in_file:
-        for l in in_file:
-            if l.startswith("H'"):
-                modules_to_check.append(l[2:6])
-
     # Query the S12
     print('\t========== Revisando las troncales ==========')
     ser.write('\x1b'.encode("ascii"))
-
     while s12_listen(ser)[0] == 0:
         ser.write('MM\r\n'.encode('ascii'))
 
-    module_state = []
-    for module in modules_to_check:
-        ser.write(("DISPLAY-TRUNK:NA1=H'" + module + ',TSLIST1=1.\r\n').encode('ascii'))
+    # Get the list of modules to check
+    df = pd.read_csv('data/input/' + f)
+    df["DISPLAY-TRUNK"] = ""
+    for index, module in enumerate(df.iloc[:,0]):
+        print('Consultando', module)
+        ser.write(("DISPLAY-TRUNK:NA1=" + module + ',TSLIST1=1.\r\n').encode('ascii'))
         while True:
             state, comment = s12_listen(ser)
             if comment != "":
-                module_state.append((module, comment))
+                df.iloc[index,-1] = comment
             if state == 1:
                 break
             else:
                 ser.write('MM\r\n'.encode('ascii'))
 
-    print('\t========== Resumen ==========')
-    for pair in module_state:
-        print(pair)
+    df.to_csv("data/output/" + f, index=False)
+    print('\t========== Resultado guardado en data/output ==========')
 
